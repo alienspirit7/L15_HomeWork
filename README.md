@@ -34,6 +34,11 @@ No external services are required; the Gaussian sampling and K-Means clustering 
 1. **Google AI Studio Prototype** – The UI and basic flow were designed and mocked up in AI Studio (see screenshot above).
 2. **Local Refinement with Codex** – All runtime logic, React components, and visual polish were rebuilt in this repository using Vite + React + TypeScript.
 
+### Why TypeScript (Not Python)?
+- The entire playground runs client-side inside the browser. TypeScript compiles to JavaScript, letting Vite/React execute the Gaussian generation and K-Means logic without any backend services.
+- Keeping the compute in the browser removes the need for Python runtime hosting or WebAssembly bridges, so interaction latency stays low.
+- TypeScript provides static typing and integrates directly with the React components, allowing us to evolve UI and mathematical logic together in one codebase.
+
 Along the way, we iteratively:
 - Migrated off Gemini API calls to a pure TypeScript implementation.
 - Enriched the UI with centroid markers, misallocation highlights, and distance tooltips.
