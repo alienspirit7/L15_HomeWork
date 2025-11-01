@@ -1,4 +1,5 @@
 import { Point, Distribution, Distributions, Centroids } from '../types';
+import { calculateEuclideanDistance } from './math';
 
 // Box-Muller transform to generate a pair of standard normal random variables (mean 0, std dev 1)
 const boxMullerTransform = (): [number, number] => {
@@ -31,6 +32,40 @@ interface GenerationResponse {
   actualOverlap: number;
 }
 
+const calculateOverlapPercentage = (
+  distributions: Distributions,
+  centroids: Centroids
+): number => {
+  const colors = Object.keys(distributions);
+  if (colors.length < 2) {
+    return 0;
+  }
+
+  let crossoverPoints = 0;
+  let totalPoints = 0;
+
+  colors.forEach(color => {
+    const points = distributions[color] || [];
+    points.forEach(point => {
+      totalPoints += 1;
+      let nearestColor: string | null = null;
+      let nearestDistance = Infinity;
+      Object.entries(centroids).forEach(([centroidColor, centroidPoint]) => {
+        const distance = calculateEuclideanDistance(point, centroidPoint);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestColor = centroidColor;
+        }
+      });
+      if (nearestColor && nearestColor !== color) {
+        crossoverPoints += 1;
+      }
+    });
+  });
+
+  return totalPoints > 0 ? (crossoverPoints / totalPoints) * 100 : 0;
+};
+
 export const generateGaussianDistributions = (sampleSize: number): GenerationResponse => {
   const stdDev = 1.8; // Tuned for visual overlap to be around 30%
   const centroids: Centroids = {
@@ -46,9 +81,11 @@ export const generateGaussianDistributions = (sampleSize: number): GenerationRes
     orange: generateSingleGaussian(centroids.orange, stdDev, sampleSize),
   };
 
+  const actualOverlap = calculateOverlapPercentage(distributions, centroids);
+
   return {
     distributions,
     initialCentroids: centroids,
-    actualOverlap: 30.0, // Fixed as per request
+    actualOverlap,
   };
 };
