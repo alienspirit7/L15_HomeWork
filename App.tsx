@@ -1,14 +1,77 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AppState, Distributions, Point, KMeansResult } from './types';
+import {
+  AppState,
+  Distributions,
+  Point,
+  KMeansResult,
+  ClusterComparisonSummary,
+  ClusterMetricsSummary,
+} from './types';
 import { Controls } from './components/Controls';
 import { ScatterPlot } from './components/ScatterPlot';
 import { Statistics } from './components/Statistics';
 import { Notification } from './components/Notification';
 import { generateGaussianDistributions } from './utils/distribution';
 import { runKMeansClientSide } from './utils/kmeans';
-import { calculateEuclideanDistance } from './utils/math';
+import { calculateEuclideanDistance, calculateClusterMetrics } from './utils/math';
 
 const CLUSTER_FORM_LABELS = ['Circle', 'Square', 'Triangle', 'Rhombus'];
+
+const formatMetric = (value: number): string => value.toFixed(3);
+
+const buildClusterComparison = (
+  baselineResult: KMeansResult,
+  baselineMetrics: ClusterMetricsSummary,
+  alternativeResult: KMeansResult,
+  alternativeMetrics: ClusterMetricsSummary
+): ClusterComparisonSummary => {
+  const baselineScore = baselineMetrics.score;
+  const alternativeScore = alternativeMetrics.score;
+  const EPS = 1e-3;
+  const baselineIntra = baselineMetrics.averageIntraDistance;
+  const alternativeIntra = alternativeMetrics.averageIntraDistance;
+  const baselineInter = baselineMetrics.averageInterCentroidDistance;
+  const alternativeInter = alternativeMetrics.averageInterCentroidDistance;
+
+  const intraDescriptor = alternativeIntra < baselineIntra
+    ? `tightens clusters (${formatMetric(baselineIntra)} → ${formatMetric(alternativeIntra)})`
+    : `loosens clusters (${formatMetric(baselineIntra)} → ${formatMetric(alternativeIntra)})`;
+
+  const interDescriptor = alternativeInter > baselineInter
+    ? `widens centroid separation (${formatMetric(baselineInter)} → ${formatMetric(alternativeInter)})`
+    : `narrows centroid separation (${formatMetric(baselineInter)} → ${formatMetric(alternativeInter)})`;
+
+  const summaryLine = `Avg intra distance — k=${baselineResult.k}: ${formatMetric(baselineIntra)}, k=${alternativeResult.k}: ${formatMetric(alternativeIntra)}. Avg centroid separation — k=${baselineResult.k}: ${formatMetric(baselineInter)}, k=${alternativeResult.k}: ${formatMetric(alternativeInter)}.`;
+
+  let recommendedK = baselineResult.k;
+  let explanation: string;
+
+  if (alternativeScore - baselineScore > EPS) {
+    recommendedK = alternativeResult.k;
+    explanation = `k=${alternativeResult.k} is recommended: its separation-to-compactness score (${formatMetric(alternativeScore)}) exceeds k=${baselineResult.k} (${formatMetric(baselineScore)}). It ${intraDescriptor}, and while it ${interDescriptor}, the gain in cluster tightness dominates, so the overall ratio improves. ${summaryLine}`;
+  } else if (baselineScore - alternativeScore > EPS) {
+    recommendedK = baselineResult.k;
+    const intraBaselineDescriptor = baselineIntra <= alternativeIntra
+      ? `keeps clusters tighter (${formatMetric(baselineIntra)} vs ${formatMetric(alternativeIntra)})`
+      : `allows looser clusters (${formatMetric(baselineIntra)} vs ${formatMetric(alternativeIntra)})`;
+    const interBaselineDescriptor = baselineInter >= alternativeInter
+      ? `keeps centroid separation wider (${formatMetric(baselineInter)} vs ${formatMetric(alternativeInter)})`
+      : `narrows centroid separation (${formatMetric(baselineInter)} vs ${formatMetric(alternativeInter)})`;
+    explanation = `Stick with k=${baselineResult.k}: its score (${formatMetric(baselineScore)}) beats k=${alternativeResult.k} (${formatMetric(alternativeScore)}), and it ${intraBaselineDescriptor} while it ${interBaselineDescriptor}, yielding the better balance between separation and compactness. ${summaryLine}`;
+  } else {
+    recommendedK = baselineResult.k;
+    explanation = `k=${baselineResult.k} and k=${alternativeResult.k} perform similarly (scores ${formatMetric(baselineScore)} vs ${formatMetric(alternativeScore)}). ${summaryLine}`;
+  }
+
+  return {
+    baselineK: baselineResult.k,
+    alternativeK: alternativeResult.k,
+    baselineMetrics,
+    alternativeMetrics,
+    recommendedK,
+    explanation,
+  };
+};
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.INITIAL);
@@ -21,6 +84,9 @@ const App: React.FC = () => {
   const [distributions, setDistributions] = useState<Distributions>({});
   const [mainKMeansResult, setMainKMeansResult] = useState<KMeansResult | null>(null);
   const [reclusterKMeansResult, setReclusterKMeansResult] = useState<KMeansResult | null>(null);
+  const [mainClusterMetrics, setMainClusterMetrics] = useState<ClusterMetricsSummary | null>(null);
+  const [reclusterClusterMetrics, setReclusterClusterMetrics] = useState<ClusterMetricsSummary | null>(null);
+  const [clusterComparison, setClusterComparison] = useState<ClusterComparisonSummary | null>(null);
 
   // Interaction state
   const [activeColor, setActiveColor] = useState<string | null>(null);
@@ -40,6 +106,9 @@ const App: React.FC = () => {
     setDistributions({});
     setMainKMeansResult(null);
     setReclusterKMeansResult(null);
+    setMainClusterMetrics(null);
+    setReclusterClusterMetrics(null);
+    setClusterComparison(null);
     setSelectedPointInfo(null);
     
     // Use a timeout to allow the UI to update to the "Building..." state
@@ -82,36 +151,60 @@ const App: React.FC = () => {
     const minY = Math.min(...yCoords);
     const maxY = Math.max(...yCoords);
 
-    // Determine current centroid to preserve shape during the transformation
-    const { sumX, sumY } = points.reduce(
-      (acc, point) => ({ sumX: acc.sumX + point.x, sumY: acc.sumY + point.y }),
-      { sumX: 0, sumY: 0 }
-    );
-    const currentCentroid = { x: sumX / points.length, y: sumY / points.length };
-
-    // Place the distribution in a new random location within (and slightly beyond) current bounds
     const rangeX = maxX - minX || 1;
     const rangeY = maxY - minY || 1;
-    const buffer = 0.2; // allow a bit of extra room outside the current bounds
-    const newCenter = {
-      x: (Math.random() * (1 + buffer * 2) + (buffer * -1)) * rangeX + minX,
-      y: (Math.random() * (1 + buffer * 2) + (buffer * -1)) * rangeY + minY,
-    };
+    const bufferRatio = 0.25;
+    const expandedMinX = minX - rangeX * bufferRatio;
+    const expandedMaxX = maxX + rangeX * bufferRatio;
+    const expandedMinY = minY - rangeY * bufferRatio;
+    const expandedMaxY = maxY + rangeY * bufferRatio;
 
-    // Randomly decide to densify (<1) or enlarge (>1) the distribution
-    const scale =
-      Math.random() < 0.5
-        ? Math.random() * 0.4 + 0.6 // 0.6 - 1.0 makes it denser
-        : Math.random() * 0.8 + 1.2; // 1.2 - 2.0 enlarges it
-
-    const explodedPoints = points.map(point => {
-      const shiftedX = (point.x - currentCentroid.x) * scale;
-      const shiftedY = (point.y - currentCentroid.y) * scale;
-      return {
-        x: newCenter.x + shiftedX,
-        y: newCenter.y + shiftedY,
-      };
+    const randomCenter = () => ({
+      x: Math.random() * (expandedMaxX - expandedMinX) + expandedMinX,
+      y: Math.random() * (expandedMaxY - expandedMinY) + expandedMinY,
     });
+
+    const groups: Point[][] = [[], []];
+    points.forEach(point => {
+      const idx = Math.random() < 0.5 ? 0 : 1;
+      groups[idx].push(point);
+    });
+
+    // Ensure both groups have points; if not, split by index.
+    if (groups[0].length === 0 || groups[1].length === 0) {
+      const half = Math.ceil(points.length / 2);
+      groups[0] = points.slice(0, half);
+      groups[1] = points.slice(half);
+    }
+
+    const transformedGroups = groups.map(group => {
+      if (group.length === 0) return [];
+
+      const { sumX, sumY } = group.reduce(
+        (acc, point) => ({ sumX: acc.sumX + point.x, sumY: acc.sumY + point.y }),
+        { sumX: 0, sumY: 0 }
+      );
+      const centroid = { x: sumX / group.length, y: sumY / group.length };
+
+      const newCenter = randomCenter();
+      const scale =
+        Math.random() < 0.5
+          ? Math.random() * 0.5 + 0.4 // concentrate cluster
+          : Math.random() * 0.7 + 1.0; // enlarge but still cohesive
+
+      const cohesion = Math.random() * 0.3 + 0.85; // tighten points toward centroid
+
+      return group.map(point => {
+        const shiftedX = (point.x - centroid.x) * scale * cohesion;
+        const shiftedY = (point.y - centroid.y) * scale * cohesion;
+        return {
+          x: newCenter.x + shiftedX,
+          y: newCenter.y + shiftedY,
+        };
+      });
+    });
+
+    const explodedPoints = [...transformedGroups[0], ...transformedGroups[1]];
 
     setDistributions(prev => ({
       ...prev,
@@ -133,8 +226,12 @@ const App: React.FC = () => {
     setTimeout(() => {
       try {
         const result = runKMeansClientSide(allPoints, 3);
+        const metrics = calculateClusterMetrics(allPoints, result.assignments, result.centroids);
         setMainKMeansResult(result);
         setReclusterKMeansResult(null);
+        setMainClusterMetrics(metrics);
+        setReclusterClusterMetrics(null);
+        setClusterComparison(null);
         setAppState(AppState.KMEANS_COMPLETE);
       } catch (error) {
         console.error(error);
@@ -156,18 +253,42 @@ const App: React.FC = () => {
     setTimeout(() => {
       try {
         const result = runKMeansClientSide(allPoints, k);
+        const metrics = calculateClusterMetrics(allPoints, result.assignments, result.centroids);
         setReclusterKMeansResult(result);
+        setReclusterClusterMetrics(metrics);
+        if (mainKMeansResult && mainClusterMetrics) {
+          const comparison = buildClusterComparison(
+            mainKMeansResult,
+            mainClusterMetrics,
+            result,
+            metrics
+          );
+          setClusterComparison(comparison);
+        } else {
+          setClusterComparison(null);
+        }
         setDistributions(distributionsBeforeKMeans.current);
         setAppState(AppState.RECLUSTER_COMPLETE);
       } catch (error) {
         console.error(error);
          alert(`Failed to run K-Means for k=${k}. Check console.`);
+         setReclusterClusterMetrics(null);
+         setClusterComparison(null);
          setAppState(AppState.KMEANS_COMPLETE);
       }
       setIsLoading(false);
       setActiveColor(null);
     }, 50);
-  }, []);
+  }, [mainKMeansResult, mainClusterMetrics]);
+
+  const handleResetToMainClustering = useCallback(() => {
+    if (!mainKMeansResult || !mainClusterMetrics) return;
+    setReclusterKMeansResult(null);
+    setReclusterClusterMetrics(null);
+    setClusterComparison(null);
+    setDistributions(distributionsBeforeKMeans.current);
+    setAppState(AppState.KMEANS_COMPLETE);
+  }, [mainKMeansResult, mainClusterMetrics]);
 
   const handlePointClick = (point: Point, color: string) => {
     const latestResult = reclusterKMeansResult ?? mainKMeansResult;
@@ -241,6 +362,7 @@ const App: React.FC = () => {
             onExplodeSelect={handleExplodeSelect}
             onDefineGroups={handleDefineGroups}
             onRecluster={handleRecluster}
+            onResetToMainClustering={handleResetToMainClustering}
             activeColor={activeColor}
             isLoading={isLoading}
           />
@@ -249,6 +371,9 @@ const App: React.FC = () => {
             sampleSize={parseInt(sampleSize) || undefined}
             mainKMeansResult={mainKMeansResult}
             reclusterKMeansResult={reclusterKMeansResult}
+            mainClusterMetrics={mainClusterMetrics}
+            reclusterClusterMetrics={reclusterClusterMetrics}
+            clusterComparison={clusterComparison}
           />
            {selectedPointInfo && (
             <div className="bg-gray-800 p-4 rounded-lg shadow-inner space-y-2">

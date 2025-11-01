@@ -42,3 +42,20 @@ export const CLUSTER_COLORS: string[] = [
   '#a855f7', // purple-500
   '#06b6d4', // cyan-500
 ];
+
+export interface ClusterMetricsSummary {
+  averageIntraDistance: number;
+  averageInterCentroidDistance: number;
+  minInterCentroidDistance: number;
+  clusterAverageDistances: number[];
+  score: number;
+}
+
+export interface ClusterComparisonSummary {
+  baselineK: number;
+  alternativeK: number;
+  baselineMetrics: ClusterMetricsSummary;
+  alternativeMetrics: ClusterMetricsSummary;
+  recommendedK: number;
+  explanation: string;
+}

@@ -10,6 +10,7 @@ interface ControlsProps {
   onExplodeSelect: (color: string) => void;
   onDefineGroups: () => void;
   onRecluster: (k: number) => void;
+  onResetToMainClustering: () => void;
   activeColor: string | null;
   isLoading: boolean;
 }
@@ -44,8 +45,17 @@ const ColorButton: React.FC<ColorButtonProps> = ({ color, text, onClick, active,
 
 
 export const Controls: React.FC<ControlsProps> = ({
-  appState, sampleSize, setSampleSize, onBuild,
-  onMoveSelect, onExplodeSelect, onDefineGroups, onRecluster, activeColor, isLoading
+  appState,
+  sampleSize,
+  setSampleSize,
+  onBuild,
+  onMoveSelect,
+  onExplodeSelect,
+  onDefineGroups,
+  onRecluster,
+  onResetToMainClustering,
+  activeColor,
+  isLoading,
 }) => {
   
   const renderContent = () => {
@@ -109,13 +119,30 @@ export const Controls: React.FC<ControlsProps> = ({
         return (
           <>
             <p className="text-center text-gray-400">Try clustering with a different K.</p>
-            <div className="flex space-x-2">
-            <button onClick={() => onRecluster(2)} disabled={isLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:bg-gray-500">
-              {isLoading && activeColor === 'k2' ? 'Running...' : 'Try 2 Groups'}
-            </button>
-            <button onClick={() => onRecluster(4)} disabled={isLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:bg-gray-500">
-              {isLoading && activeColor === 'k4' ? 'Running...' : 'Try 4 Groups'}
-            </button>
+            <div className="flex flex-col space-y-2">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => onRecluster(2)}
+                  disabled={isLoading}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:bg-gray-500"
+                >
+                  {isLoading && activeColor === 'k2' ? 'Running...' : 'Try 2 Groups'}
+                </button>
+                <button
+                  onClick={() => onRecluster(4)}
+                  disabled={isLoading}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:bg-gray-500"
+                >
+                  {isLoading && activeColor === 'k4' ? 'Running...' : 'Try 4 Groups'}
+                </button>
+              </div>
+              <button
+                onClick={onResetToMainClustering}
+                disabled={isLoading}
+                className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-4 rounded-md transition duration-200 disabled:bg-gray-500"
+              >
+                Back to k=3 Result
+              </button>
             </div>
           </>
         );
