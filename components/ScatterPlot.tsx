@@ -13,6 +13,7 @@ interface PlotPoint {
   y: number;
   color: string;
   cluster?: number;
+  misallocated?: boolean;
 }
 
 export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansResult, onPointClick }) => {
@@ -50,6 +51,30 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansR
     });
 
     const kMeansCentroids = kmeansResult?.centroids ?? [];
+
+    if (kMeansCentroids.length > 0) {
+      const epsilon = 1e-9;
+      points.forEach(p => {
+        p.misallocated = false;
+        const clusterIndex = p.cluster;
+        if (clusterIndex === undefined || clusterIndex < 0 || clusterIndex >= kMeansCentroids.length) {
+          return;
+        }
+        const assignedCentroid = kMeansCentroids[clusterIndex];
+        if (!assignedCentroid) return;
+        const assignedDistanceSq = Math.pow(p.x - assignedCentroid.x, 2) + Math.pow(p.y - assignedCentroid.y, 2);
+        for (let i = 0; i < kMeansCentroids.length; i++) {
+          if (i === clusterIndex) continue;
+          const centroid = kMeansCentroids[i];
+          if (!centroid) continue;
+          const candidateDistanceSq = Math.pow(p.x - centroid.x, 2) + Math.pow(p.y - centroid.y, 2);
+          if (candidateDistanceSq + epsilon < assignedDistanceSq) {
+            p.misallocated = true;
+            break;
+          }
+        }
+      });
+    }
 
     if (points.length === 0) {
       return {
@@ -105,10 +130,18 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansR
 
         {allPoints.map((p, i) => {
             const shapeSize = width / 125;
-            const fill = p.color ? DISTRIBUTION_COLORS[p.color] : '#ffffff';
+            const isMisallocated = Boolean(p.misallocated);
+            const fillColor = isMisallocated
+              ? '#ffffff'
+              : (p.color ? DISTRIBUTION_COLORS[p.color] : '#ffffff');
+            const strokeColor = isMisallocated
+              ? (p.color ? DISTRIBUTION_COLORS[p.color] : '#f87171')
+              : undefined;
             const commonProps = {
-              fill: fill,
-              fillOpacity: "0.8",
+              fill: fillColor,
+              fillOpacity: isMisallocated ? 1 : 0.8,
+              stroke: strokeColor,
+              strokeWidth: isMisallocated ? (width / 400) : undefined,
             };
 
             let shapeElement;
@@ -188,20 +221,61 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansR
 
         {kMeansCentroids.map((centroid, index) => {
           if (!centroid) return null;
-          const markerSize = width / 60;
+          const markerSize = width / 45;
           const colors = ['#22c55e', '#000000', '#a855f7', '#06b6d4'];
           const stroke = colors[index % colors.length];
+
+          const renderClusterShape = () => {
+            const commonProps = {
+              fill: 'none',
+              stroke,
+              strokeWidth: markerSize / 6,
+            };
+            switch (index) {
+              case 0:
+                return (
+                  <circle
+                    cx={centroid.x}
+                    cy={centroid.y}
+                    r={markerSize / 2}
+                    {...commonProps}
+                  />
+                );
+              case 1:
+                return (
+                  <rect
+                    x={centroid.x - markerSize / 2}
+                    y={centroid.y - markerSize / 2}
+                    width={markerSize}
+                    height={markerSize}
+                    {...commonProps}
+                  />
+                );
+              case 2: {
+                const triPoints = `${centroid.x},${centroid.y - markerSize/2} ${centroid.x - markerSize/2},${centroid.y + markerSize/2} ${centroid.x + markerSize/2},${centroid.y + markerSize/2}`;
+                return <polygon points={triPoints} {...commonProps} />;
+              }
+              case 3: {
+                const rhomPoints = `${centroid.x},${centroid.y - markerSize/2} ${centroid.x + markerSize/2},${centroid.y} ${centroid.x},${centroid.y + markerSize/2} ${centroid.x - markerSize/2},${centroid.y}`;
+                return <polygon points={rhomPoints} {...commonProps} />;
+              }
+              default:
+                return (
+                  <circle
+                    cx={centroid.x}
+                    cy={centroid.y}
+                    r={markerSize / 2}
+                    {...commonProps}
+                  />
+                );
+            }
+          };
+
+          const clusterLabel = ['Circle', 'Square', 'Triangle', 'Rhombus'][index] ?? `K${index + 1}`;
+
           return (
             <g key={`kmeans-centroid-${index}`}>
-              <rect
-                x={centroid.x - markerSize / 2}
-                y={centroid.y - markerSize / 2}
-                width={markerSize}
-                height={markerSize}
-                fill="none"
-                stroke={stroke}
-                strokeWidth={markerSize / 6}
-              />
+              {renderClusterShape()}
               <text
                 x={centroid.x + markerSize}
                 y={centroid.y - markerSize}
@@ -209,7 +283,7 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansR
                 fontSize={markerSize * 0.8}
                 fontWeight="bold"
               >
-                {`K${index + 1}`}
+                {clusterLabel}
               </text>
             </g>
           );

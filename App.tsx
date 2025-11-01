@@ -6,7 +6,7 @@ import { Statistics } from './components/Statistics';
 import { Notification } from './components/Notification';
 import { generateGaussianDistributions } from './utils/distribution';
 import { runKMeansClientSide } from './utils/kmeans';
-import { calculateCosineDistance } from './utils/math';
+import { calculateEuclideanDistance } from './utils/math';
 
 const CLUSTER_FORM_LABELS = ['Circle', 'Square', 'Triangle', 'Rhombus'];
 
@@ -176,9 +176,9 @@ const App: React.FC = () => {
       return;
     }
 
-    let info = `Point (${point.x.toFixed(2)}, ${point.y.toFixed(2)}) from ${color} group.\nCosine Distances to latest cluster centers (k=${latestResult.k}):\n`;
+    let info = `Point (${point.x.toFixed(2)}, ${point.y.toFixed(2)}) from ${color} group.\nEuclidean distances to latest cluster centers (k=${latestResult.k}):\n`;
     latestResult.centroids.forEach((centerPoint, index) => {
-      const dist = calculateCosineDistance(point, centerPoint);
+      const dist = calculateEuclideanDistance(point, centerPoint);
       const clusterLabel = CLUSTER_FORM_LABELS[index] ?? `Cluster ${index + 1}`;
       info += `  - ${clusterLabel}: ${dist.toFixed(4)}\n`;
     });
