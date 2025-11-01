@@ -297,12 +297,26 @@ const App: React.FC = () => {
       return;
     }
 
-    let info = `Point (${point.x.toFixed(2)}, ${point.y.toFixed(2)}) from ${color} group.\nEuclidean distances to latest cluster centers (k=${latestResult.k}):\n`;
+    let closestClusterIndex = 0;
+    let smallestDistance = Infinity;
+    const distanceLines: string[] = [];
+
     latestResult.centroids.forEach((centerPoint, index) => {
       const dist = calculateEuclideanDistance(point, centerPoint);
+      if (dist < smallestDistance) {
+        smallestDistance = dist;
+        closestClusterIndex = index;
+      }
       const clusterLabel = CLUSTER_FORM_LABELS[index] ?? `Cluster ${index + 1}`;
-      info += `  - ${clusterLabel}: ${dist.toFixed(4)}\n`;
+      distanceLines.push(`  - ${clusterLabel}: ${dist.toFixed(4)}`);
     });
+
+    const assignedLabel = CLUSTER_FORM_LABELS[closestClusterIndex] ?? `Cluster ${closestClusterIndex + 1}`;
+
+    let info = `${assignedLabel} point (${point.x.toFixed(2)}, ${point.y.toFixed(2)}) originally from ${color} group.\n`;
+    info += `Euclidean distances to latest cluster centers (k=${latestResult.k}):\n`;
+    info += distanceLines.join('\n');
+    info += '\n';
     setSelectedPointInfo(info);
   };
 

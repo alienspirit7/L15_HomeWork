@@ -128,7 +128,7 @@ Each screenshot corresponds to a step in the journey described above, making it 
 ### Inspect Distances Per Point
 Click any point in the scatter plot to view its Euclidean distance to every centroid from the latest K-Means run. This popover helps explain why misallocations occur or which cluster a point truly belongs to.
 
-![Point distance tooltip](Images/Screenshot%202025-11-01%20at%2023.28.35.png)
+![Point distance tooltip](Images/Screenshot%202025-11-02%20at%200.28.41.png)
 
 ---
 
