@@ -16,13 +16,18 @@ interface PlotPoint {
 }
 
 export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansResult, onPointClick }) => {
-  const { allPoints, bounds, width, height } = useMemo(() => {
+  const { allPoints, bounds, width, height, distributionCentroids, kMeansCentroids } = useMemo(() => {
     const points: PlotPoint[] = [];
+    const centroidSums: Record<string, { sumX: number; sumY: number; count: number }> = {};
     Object.entries(distributions).forEach(([color, dist]) => {
+      centroidSums[color] = { sumX: 0, sumY: 0, count: 0 };
       if (Array.isArray(dist)) {
         (dist as Point[]).forEach(p => {
           if (p && typeof p.x === 'number' && typeof p.y === 'number' && isFinite(p.x) && isFinite(p.y)) {
             points.push({ ...p, color });
+            centroidSums[color].sumX += p.x;
+            centroidSums[color].sumY += p.y;
+            centroidSums[color].count += 1;
           }
         });
       }
@@ -37,8 +42,24 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansR
       }
     }
 
+    const distributionCentroids: Record<string, Point> = {};
+    Object.entries(centroidSums).forEach(([color, { sumX, sumY, count }]) => {
+      if (count > 0) {
+        distributionCentroids[color] = { x: sumX / count, y: sumY / count };
+      }
+    });
+
+    const kMeansCentroids = kmeansResult?.centroids ?? [];
+
     if (points.length === 0) {
-      return { allPoints: [], bounds: { minX: -10, maxX: 10, minY: -10, maxY: 10 }, width: 20, height: 20 };
+      return {
+        allPoints: [],
+        bounds: { minX: -10, maxX: 10, minY: -10, maxY: 10 },
+        width: 20,
+        height: 20,
+        distributionCentroids,
+        kMeansCentroids,
+      };
     }
 
     const xCoords = points.map(p => p.x);
@@ -69,7 +90,7 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansR
     const width = bounds.maxX - bounds.minX;
     const height = bounds.maxY - bounds.minY;
     
-    return { allPoints: points, bounds, width, height };
+    return { allPoints: points, bounds, width, height, distributionCentroids, kMeansCentroids };
   }, [distributions, kmeansResult]);
 
   return (
@@ -122,6 +143,76 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ distributions, kmeansR
                 {shapeElement}
               </g>
             );
+        })}
+
+        {Object.entries(distributionCentroids).map(([color, centroid]) => {
+          const markerSize = width / 50;
+          return (
+            <g key={`centroid-${color}`}>
+              <circle
+                cx={centroid.x}
+                cy={centroid.y}
+                r={markerSize / 2}
+                fill="#ffffff"
+                stroke={DISTRIBUTION_COLORS[color]}
+                strokeWidth={markerSize / 4}
+              />
+              <line
+                x1={centroid.x - markerSize}
+                y1={centroid.y}
+                x2={centroid.x + markerSize}
+                y2={centroid.y}
+                stroke={DISTRIBUTION_COLORS[color]}
+                strokeWidth={markerSize / 6}
+              />
+              <line
+                x1={centroid.x}
+                y1={centroid.y - markerSize}
+                x2={centroid.x}
+                y2={centroid.y + markerSize}
+                stroke={DISTRIBUTION_COLORS[color]}
+                strokeWidth={markerSize / 6}
+              />
+              <text
+                x={centroid.x + markerSize * 0.8}
+                y={centroid.y - markerSize * 0.8}
+                fill={DISTRIBUTION_COLORS[color]}
+                fontSize={markerSize}
+                fontWeight="bold"
+              >
+                {color.toUpperCase()}
+              </text>
+            </g>
+          );
+        })}
+
+        {kMeansCentroids.map((centroid, index) => {
+          if (!centroid) return null;
+          const markerSize = width / 60;
+          const colors = ['#22c55e', '#000000', '#a855f7', '#06b6d4'];
+          const stroke = colors[index % colors.length];
+          return (
+            <g key={`kmeans-centroid-${index}`}>
+              <rect
+                x={centroid.x - markerSize / 2}
+                y={centroid.y - markerSize / 2}
+                width={markerSize}
+                height={markerSize}
+                fill="none"
+                stroke={stroke}
+                strokeWidth={markerSize / 6}
+              />
+              <text
+                x={centroid.x + markerSize}
+                y={centroid.y - markerSize}
+                fill={stroke}
+                fontSize={markerSize * 0.8}
+                fontWeight="bold"
+              >
+                {`K${index + 1}`}
+              </text>
+            </g>
+          );
         })}
       </svg>
       )}

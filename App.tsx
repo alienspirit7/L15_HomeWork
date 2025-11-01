@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AppState, Distributions, Point, Centroids, KMeansResult } from './types';
+import { AppState, Distributions, Point, KMeansResult } from './types';
 import { Controls } from './components/Controls';
 import { ScatterPlot } from './components/ScatterPlot';
 import { Statistics } from './components/Statistics';
@@ -7,6 +7,8 @@ import { Notification } from './components/Notification';
 import { generateGaussianDistributions } from './utils/distribution';
 import { runKMeansClientSide } from './utils/kmeans';
 import { calculateCosineDistance } from './utils/math';
+
+const CLUSTER_FORM_LABELS = ['Circle', 'Square', 'Triangle', 'Rhombus'];
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.INITIAL);
@@ -17,7 +19,6 @@ const App: React.FC = () => {
 
   // Data
   const [distributions, setDistributions] = useState<Distributions>({});
-  const [initialCentroids, setInitialCentroids] = useState<Centroids>({});
   const [mainKMeansResult, setMainKMeansResult] = useState<KMeansResult | null>(null);
   const [reclusterKMeansResult, setReclusterKMeansResult] = useState<KMeansResult | null>(null);
 
@@ -45,9 +46,8 @@ const App: React.FC = () => {
     setTimeout(() => {
       try {
         const result = generateGaussianDistributions(sizeNum);
-        const { distributions: newDistributions, initialCentroids: newCentroids, actualOverlap } = result;
+        const { distributions: newDistributions, actualOverlap } = result;
         setDistributions(newDistributions || {});
-        setInitialCentroids(newCentroids || {});
         setInitialOverlap(actualOverlap);
         setAppState(AppState.AWAITING_MOVE_SELECTION);
       } catch (error) {
@@ -70,10 +70,11 @@ const App: React.FC = () => {
     setAppState(AppState.EXPLODING_DISTRIBUTION);
     
     const points = distributions[color] as Point[];
-    if (!points) return;
+    if (!points || points.length === 0) return;
     
-    // Find view bounds to scatter points within
+    // Find view bounds to keep new placement within a sensible range
     const allPoints: Point[] = Object.values(distributions).flat() as Point[];
+    if (allPoints.length === 0) return;
     const xCoords = allPoints.map(p => p.x);
     const yCoords = allPoints.map(p => p.y);
     const minX = Math.min(...xCoords);
@@ -81,10 +82,36 @@ const App: React.FC = () => {
     const minY = Math.min(...yCoords);
     const maxY = Math.max(...yCoords);
 
-    const explodedPoints = points.map(() => ({
-      x: Math.random() * (maxX - minX) + minX,
-      y: Math.random() * (maxY - minY) + minY,
-    }));
+    // Determine current centroid to preserve shape during the transformation
+    const { sumX, sumY } = points.reduce(
+      (acc, point) => ({ sumX: acc.sumX + point.x, sumY: acc.sumY + point.y }),
+      { sumX: 0, sumY: 0 }
+    );
+    const currentCentroid = { x: sumX / points.length, y: sumY / points.length };
+
+    // Place the distribution in a new random location within (and slightly beyond) current bounds
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const buffer = 0.2; // allow a bit of extra room outside the current bounds
+    const newCenter = {
+      x: (Math.random() * (1 + buffer * 2) + (buffer * -1)) * rangeX + minX,
+      y: (Math.random() * (1 + buffer * 2) + (buffer * -1)) * rangeY + minY,
+    };
+
+    // Randomly decide to densify (<1) or enlarge (>1) the distribution
+    const scale =
+      Math.random() < 0.5
+        ? Math.random() * 0.4 + 0.6 // 0.6 - 1.0 makes it denser
+        : Math.random() * 0.8 + 1.2; // 1.2 - 2.0 enlarges it
+
+    const explodedPoints = points.map(point => {
+      const shiftedX = (point.x - currentCentroid.x) * scale;
+      const shiftedY = (point.y - currentCentroid.y) * scale;
+      return {
+        x: newCenter.x + shiftedX,
+        y: newCenter.y + shiftedY,
+      };
+    });
 
     setDistributions(prev => ({
       ...prev,
@@ -143,12 +170,17 @@ const App: React.FC = () => {
   }, []);
 
   const handlePointClick = (point: Point, color: string) => {
-    if (!initialCentroids || Object.keys(initialCentroids).length === 0) return;
+    const latestResult = reclusterKMeansResult ?? mainKMeansResult;
+    if (!latestResult || !latestResult.centroids || latestResult.centroids.length === 0) {
+      setSelectedPointInfo('Run K-Means to view distances to the latest cluster centers.');
+      return;
+    }
 
-    let info = `Point (${point.x.toFixed(2)}, ${point.y.toFixed(2)}) from ${color} group.\nCosine Distances to original centers:\n`;
-    Object.entries(initialCentroids).forEach(([centerColor, centerPoint]) => {
+    let info = `Point (${point.x.toFixed(2)}, ${point.y.toFixed(2)}) from ${color} group.\nCosine Distances to latest cluster centers (k=${latestResult.k}):\n`;
+    latestResult.centroids.forEach((centerPoint, index) => {
       const dist = calculateCosineDistance(point, centerPoint);
-      info += `  - ${centerColor}: ${dist.toFixed(4)}\n`;
+      const clusterLabel = CLUSTER_FORM_LABELS[index] ?? `Cluster ${index + 1}`;
+      info += `  - ${clusterLabel}: ${dist.toFixed(4)}\n`;
     });
     setSelectedPointInfo(info);
   };
