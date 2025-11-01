@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "title": "Implement Gaussian distribution builder",
+    "description": "Deliver FR-1 and FR-2 by generating three Gaussian distributions with calibrated overlap and exposing actual overlap metrics.",
+    "status": "todo",
+    "owner": null
+  },
+  {
+    "id": 2,
+    "title": "Add distribution manipulation interactions",
+    "description": "Cover FR-3 and FR-4 by enabling move-with-arrow-keys and explode-split behaviors, including notifications and state transitions.",
+    "status": "todo",
+    "owner": null
+  },
+  {
+    "id": 3,
+    "title": "Implement baseline K-Means clustering (k=3)",
+    "description": "Fulfill FR-5 by running K-Means for k=3, capturing iterations, SSE, and cluster centroid data for downstream metrics.",
+    "status": "todo",
+    "owner": null
+  },
+  {
+    "id": 4,
+    "title": "Support alternate k values and recommendations",
+    "description": "Address FR-6 and FR-7 by adding k=2/k=4 clustering flows, comparison metrics, and recommendation copy.",
+    "status": "todo",
+    "owner": null
+  },
+  {
+    "id": 5,
+    "title": "Enhance visualization and point analytics",
+    "description": "Satisfy FR-8 and FR-9 with centroid markers, misallocated point highlights, and point distance tooltips.",
+    "status": "todo",
+    "owner": null
+  },
+  {
+    "id": 6,
+    "title": "Implement baseline reset control",
+    "description": "Implement FR-10 by adding a control that restores the k=3 clustering view after alternative runs.",
+    "status": "todo",
+    "owner": null
+  },
+  {
+    "id": 7,
+    "title": "Align documentation and walkthrough assets",
+    "description": "Deliver FR-11 and documentation deliverables by maintaining README, PROMPTS, PRD, and screenshot walkthrough.",
+    "status": "todo",
+    "owner": null
+  },
+  {
+    "id": 8,
+    "title": "Validate non-functional requirements",
+    "description": "Ensure NFR compliance (client-only runtime, TS strictness, browser compatibility, fast load, no console errors).",
+    "status": "todo",
+    "owner": null
+  }
+]

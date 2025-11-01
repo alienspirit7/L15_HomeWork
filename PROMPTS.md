@@ -101,3 +101,318 @@ Rewrote the `handleExplodeSelect` function in `App.tsx`. The new logic moves the
 
 **Action Taken:**
 Created this `PROMPTS.md` file to document the entire development history of the session.
+
+---
+
+### Prompt 11: Running The App
+
+**User Prompt:**
+> How do I run this app?
+
+**Action Taken:** Inspected the project setup, reviewed `package.json`, and explained the steps (`npm install`, optional `.env.local`, `npm run dev`) to launch the Vite React app locally.
+
+---
+
+### Prompt 12: Gemini Usage
+
+**User Prompt:**
+> What is being done with gemini?
+
+**Action Taken:** Searched the codebase, confirmed no runtime references to `@google/genai`, and reported that Gemini was unused aside from dependency declarations.
+
+---
+
+### Prompt 13: Removing Gemini Service
+
+**User Prompt:**
+> Can I safely remove gemini_service?
+
+**Action Taken:** Verified `services/geminiService.ts` was unused and advised it was safe to delete.
+
+---
+
+### Prompt 14: Confirm Removal
+
+**User Prompt:**
+> Yes, let's remove
+
+**Action Taken:** Deleted the empty `services/geminiService.ts` file/directory entry.
+
+---
+
+### Prompt 15: npm Install Explanation
+
+**User Prompt:**
+> What does npm install do?
+
+**Action Taken:** Explained that `npm install` resolves dependencies from `package.json`, creates `node_modules`, and captures exact versions in the lockfile.
+
+---
+
+### Prompt 16: Removing @google/genai
+
+**User Prompt:**
+> It mensions google/genai, can it be removed?
+
+**Action Taken:** Removed `@google/genai` from `package.json` and the CDN import in `index.html`.
+
+---
+
+### Prompt 17: Viewing The App Locally
+
+**User Prompt:**
+> If I want to see what the code does, how do I do that on my local machine?
+
+**Action Taken:** Reiterated the local workflow—`npm install`, `npm run dev`, optional `npm run build && npm run preview`.
+
+---
+
+### Prompt 18: Dependency Count
+
+**User Prompt:**
+> It added 114 packages, why was it needed?
+
+**Action Taken:** Clarified that installing Vite/React pulls a large transitive dependency tree, hence 114 packages.
+
+---
+
+### Prompt 19: Installation Safety
+
+**User Prompt:**
+> Is it save to install these dependences?
+
+**Action Taken:** Noted they are standard Vite/React packages, advised following organizational security practices when installing.
+
+---
+
+### Prompt 20: Package Review
+
+**User Prompt:**
+> Could you review these packages for me?
+
+**Action Taken:** Reviewed each dependency version (React 19, Vite 6, TypeScript 5.8 RC, etc.), highlighted stability considerations, and suggested pinning if necessary.
+
+---
+
+### Prompt 21: Install Location
+
+**User Prompt:**
+> Was it installed in the path only? or was anything installed in the root?
+
+**Action Taken:** Confirmed `npm install` only affected the project directory (`node_modules`, `package-lock.json`), nothing global.
+
+---
+
+### Prompt 22: Ignore myenv
+
+**User Prompt:**
+> add gitignore to ignore those myenv insalls/files
+
+**Action Taken:** Created `.gitignore` covering `node_modules/`, `myenv/`, and `.env.local`.
+
+---
+
+### Prompt 23: Ignore .DS_Store
+
+**User Prompt:**
+> .DS_Store should also be ignored
+
+**Action Taken:** Added `.DS_Store` to `.gitignore`.
+
+---
+
+### Prompt 24: Tracked .DS_Store
+
+**User Prompt:**
+> Why do I still see .DS_Store in the list of changes to commit?
+
+**Action Taken:** Explained that `.DS_Store` was already tracked and suggested `git rm --cached` to remove it from version control.
+
+---
+
+### Prompt 25: Remove services Folder
+
+**User Prompt:**
+> remove folder services
+
+**Action Taken:** Removed the now-empty `services/` directory.
+
+---
+
+### Prompt 26: Running The App (Again)
+
+**User Prompt:**
+> So what should I do now to see the app working on my local machine?
+
+**Action Taken:** Reconfirmed the local development workflow using `npm install` and `npm run dev`.
+
+---
+
+### Prompt 27: Explode Behavior Change
+
+**User Prompt:**
+> When exploding the distribution, make it instead of random reallocation of points move the entire distribution to a new (random) place and change its density (enlarge or make it more dense).
+
+**Action Taken:** Reworked `handleExplodeSelect` so an exploded distribution shifts wholesale to a new center and applies a random scaling factor.
+
+---
+
+### Prompt 28: Distance From Latest Clusters
+
+**User Prompt:**
+> When user clicks the point, make the calculation of distance be about the centers of the groups created the last
+
+**Action Taken:** Updated point-click logic to reference the latest clustering result (reclustered if present) when computing distances.
+
+---
+
+### Prompt 29: Build Artifact Explanation
+
+**User Prompt:**
+> What is the newly created file of index-D3YHjtKe.js? What is it's functionality and why do I need it?
+
+**Action Taken:** Explained the Vite production bundle artifact and when it is used.
+
+---
+
+### Prompt 30: Remove Build Output
+
+**User Prompt:**
+> I don't plan actual deploy, so lets remove it
+
+**Action Taken:** Deleted the generated `dist/` folder.
+
+---
+
+### Prompt 31: Show Centroids & Rename
+
+**User Prompt:**
+> Add to each step where distributions are plotted - these distributions Centroids in a clear, easy to see manner. Also when user clicks to see the distance to centroids, instead of colling distribution 1, distribution 2, distribution 3, call them as per the forms used
+
+**Action Taken:** Added centroid markers/labels to `ScatterPlot` and renamed distance labels to match shape names.
+
+---
+
+### Prompt 32: Match Reclustering Centroid Shapes
+
+**User Prompt:**
+> Make the centroids visuals of the re-allocated distributions (after explode) be per their relevant distribution form
+
+**Action Taken:** Aligned K-Means centroid markers with their cluster shapes (circle, square, triangle, rhombus).
+
+---
+
+### Prompt 33: Flag Misallocated Points
+
+**User Prompt:**
+> Mark the points with wrong allocation with white color. Wrong allocation where the point is squared and is assigned to square distribution group, but the distance to some other centroid is actually smaller
+
+**Action Taken:** Computed nearest-centroid distances per point and colored misallocated points white with colored outlines.
+
+---
+
+### Prompt 34: Cosine Distance Question
+
+**User Prompt:**
+> Why when checking specific point I see that cos distance is lower to the centroid that is further on the plot?
+
+**Action Taken:** Clarified cosine distance measures directional similarity, not Euclidean proximity.
+
+---
+
+### Prompt 35: K-Means Distance Metric
+
+**User Prompt:**
+> Which distance K-Means uses?
+
+**Action Taken:** Confirmed the algorithm uses squared Euclidean distance internally.
+
+---
+
+### Prompt 36: Switch To Euclidean Distances
+
+**User Prompt:**
+> Let's change to Euclidian then
+
+**Action Taken:** Replaced cosine distance with Euclidean distance for point-click summaries and utility functions.
+
+---
+
+### Prompt 37: Cluster Metrics & Recommendation
+
+**User Prompt:**
+> Calculate both intra-cluster distance and  inter-cluster distance when comparing k=3 and (k=2 or k=4). Make decision which of the options is better and explain to the user why
+
+**Action Taken:** Added cluster metric calculations, stored summaries, and surfaced a recommendation comparing k=3 vs. k=2/4 in the stats panel.
+
+---
+
+### Prompt 38: package-lock.json Purpose
+
+**User Prompt:**
+> What is package-lock.json? do I need it?
+
+**Action Taken:** Explained the lockfile’s role in reproducible installs and advised keeping it.
+
+---
+
+### Prompt 39: Clarify Recommendation Text
+
+**User Prompt:**
+> Add clear definition which split (k=3 or k=2(4)) is better and why, using provided statistics.
+
+**Action Taken:** Enhanced the stats UI to highlight the selected best split and list detailed metrics for both configurations.
+
+---
+
+### Prompt 40: Recommendation Visibility
+
+**User Prompt:**
+> The explanation is not visible in UI.
+
+**Action Taken:** Fixed hook dependencies so the recommendation recalculates and renders after reclustering.
+
+---
+
+### Prompt 41: Separation Concern
+
+**User Prompt:**
+> It currently says the following: Recommendation ... Aren't we looking for the higher centroids separation?
+
+**Action Taken:** Clarified copy to describe the trade-off between compactness and separation when the ratio favours an alternative k.
+
+---
+
+### Prompt 42: Explode Into Two Groups
+
+**User Prompt:**
+> When making group explode, split the distribution into 2 and then move each part randomly and make it grouped together more or less (randomly)
+
+**Action Taken:** Modified explode logic to split distributions into two sub-clusters, relocate each, and adjust cohesion randomly.
+
+---
+
+### Prompt 43: Reset To k=3
+
+**User Prompt:**
+> add an option for the user to get back to the k=3 version
+
+**Action Taken:** Added a “Back to k=3 Result” button in the controls to restore the baseline clustering view.
+
+---
+
+### Prompt 44: Actual Overlap Calculation
+
+**User Prompt:**
+> When building the first distribution, calculate actual overlap of the distributions built and not simple reporting of the default overlap asked
+
+**Action Taken:** Computed real overlap by checking which centroid each point is closest to, replacing the fixed 30% value.
+
+---
+
+### Prompt 45: Update Prompt Log
+
+**User Prompt:**
+> Update Prompts.md file with all the exact prompts used in this chat. Keep the current file design
+
+**Action Taken:** Appended all newer prompts (11–45) to this log while preserving the original format.
