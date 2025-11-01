@@ -1,0 +1,4 @@
+node_modules/
+myenv/
+.env.local
+.DS_Store
