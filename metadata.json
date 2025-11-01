@@ -1,0 +1,5 @@
+
+{
+  "name": "Interactive Gaussian Distribution & K-Means Clustering",
+  "description": "An interactive web application to generate, manipulate, and cluster three Gaussian distributions. Users can specify overlap and sample size, move and 'explode' distributions, and then apply K-Means clustering to re-group the data points, analyzing the results."
+}
